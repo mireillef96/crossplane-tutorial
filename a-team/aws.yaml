@@ -226,6 +226,6 @@ spec:
                 publiclyAccessible: true
                 allocatedStorage: 50
                 passwordSecretRef:
-                  namespace: crossplane-system
+                  namespace: a-team
                   key: password
                   name: silly-demo-db-password
