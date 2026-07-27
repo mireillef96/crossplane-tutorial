@@ -23,6 +23,18 @@ spec:
         resources:
         - base:
             apiVersion: kubernetes.crossplane.io/v1alpha1
+            kind: ProviderConfig
+            spec:
+              credentials:
+                source: InjectedIdentity
+          name: kubernetes
+          patches:
+          - fromFieldPath: spec.id
+            toFieldPath: metadata.name
+          readinessChecks:
+          - type: None   
+        - base:
+            apiVersion: kubernetes.crossplane.io/v1alpha1
             kind: Object
             spec:
               forProvider:
