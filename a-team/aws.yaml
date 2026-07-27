@@ -245,270 +245,277 @@ spec:
   - name: metadata
     patches:
     - fromFieldPath: metadata.labels
-  resources:
-  - base:
-      apiVersion: kubernetes.crossplane.io/v1alpha1
-      kind: ProviderConfig
-      spec:
-        credentials:
-          source: InjectedIdentity
-    name: kubernetes
-    patches:
-    - fromFieldPath: spec.id
-      toFieldPath: metadata.name
-    readinessChecks:
-    - type: None
-  - base:
-      apiVersion: kubernetes.crossplane.io/v1alpha1
-      kind: Object
-      spec:
-        forProvider:
-          manifest:
-            apiVersion: apps/v1
-            kind: Deployment
+  pipeline:
+    - step: patch-and-transform
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        apiVersion: pt.fn.crossplane.io/v1beta1
+        kind: Resources      
+        resources:
+        - base:
+            apiVersion: kubernetes.crossplane.io/v1alpha1
+            kind: ProviderConfig
             spec:
-              template:
-                spec:
-                  containers:
-                  - env:
-                    - name: DB_ENDPOINT
-                      valueFrom:
-                        secretKeyRef:
-                          key: endpoint
-                    - name: DB_PASSWORD
-                      valueFrom:
-                        secretKeyRef:
-                          key: password
-                    - name: DB_PORT
-                      valueFrom:
-                        secretKeyRef:
-                          key: port
-                          optional: true
-                    - name: DB_USERNAME
-                      valueFrom:
-                        secretKeyRef:
-                          key: username
-                    - name: DB_NAME
-                    livenessProbe:
-                      httpGet:
-                        path: /
-                        port: 80
-                    name: backend
+              credentials:
+                source: InjectedIdentity
+          name: kubernetes
+          patches:
+          - fromFieldPath: spec.id
+            toFieldPath: metadata.name
+          readinessChecks:
+          - type: None
+        - base:
+            apiVersion: kubernetes.crossplane.io/v1alpha1
+            kind: Object
+            spec:
+              forProvider:
+                manifest:
+                  apiVersion: apps/v1
+                  kind: Deployment
+                  spec:
+                    template:
+                      spec:
+                        containers:
+                        - env:
+                          - name: DB_ENDPOINT
+                            valueFrom:
+                              secretKeyRef:
+                                key: endpoint
+                          - name: DB_PASSWORD
+                            valueFrom:
+                              secretKeyRef:
+                                key: password
+                          - name: DB_PORT
+                            valueFrom:
+                              secretKeyRef:
+                                key: port
+                                optional: true
+                          - name: DB_USERNAME
+                            valueFrom:
+                              secretKeyRef:
+                                key: username
+                          - name: DB_NAME
+                          livenessProbe:
+                            httpGet:
+                              path: /
+                              port: 80
+                          name: backend
+                          ports:
+                          - containerPort: 80
+                          readinessProbe:
+                            httpGet:
+                              path: /
+                              port: 80
+                          resources:
+                            limits:
+                              cpu: 250m
+                              memory: 256Mi
+                            requests:
+                              cpu: 125m
+                              memory: 128Mi
+          name: deployment
+          patches:
+          - fromFieldPath: spec.id
+            toFieldPath: metadata.name
+            transforms:
+            - string:
+                fmt: '%s-deployment'
+              type: string
+          - fromFieldPath: spec.id
+            toFieldPath: spec.forProvider.manifest.metadata.name
+          - fromFieldPath: spec.parameters.namespace
+            toFieldPath: spec.forProvider.manifest.metadata.namespace
+          - fromFieldPath: spec.id
+            toFieldPath: spec.forProvider.manifest.metadata.labels.app
+          - fromFieldPath: spec.id
+            toFieldPath: spec.forProvider.manifest.spec.selector.matchLabels.app
+          - fromFieldPath: spec.id
+            toFieldPath: spec.forProvider.manifest.spec.template.metadata.labels.app
+          - fromFieldPath: spec.parameters.image
+            toFieldPath: spec.forProvider.manifest.spec.template.spec.containers[0].image
+          - fromFieldPath: spec.parameters.port
+            toFieldPath: spec.forProvider.manifest.spec.template.spec.containers[0].ports[0].containerPort
+          - fromFieldPath: spec.parameters.port
+            toFieldPath: spec.forProvider.manifest.spec.template.spec.containers[0].livenessProbe.httpGet.port
+          - fromFieldPath: spec.parameters.port
+            toFieldPath: spec.forProvider.manifest.spec.template.spec.containers[0].readinessProbe.httpGet.port
+          - fromFieldPath: spec.id
+            toFieldPath: spec.forProvider.manifest.spec.template.spec.containers[0].env[0].valueFrom.secretKeyRef.name
+          - fromFieldPath: spec.id
+            toFieldPath: spec.forProvider.manifest.spec.template.spec.containers[0].env[1].valueFrom.secretKeyRef.name
+          - fromFieldPath: spec.id
+            toFieldPath: spec.forProvider.manifest.spec.template.spec.containers[0].env[2].valueFrom.secretKeyRef.name
+          - fromFieldPath: spec.id
+            toFieldPath: spec.forProvider.manifest.spec.template.spec.containers[0].env[3].valueFrom.secretKeyRef.name
+          - fromFieldPath: spec.id
+            toFieldPath: spec.forProvider.manifest.spec.template.spec.containers[0].env[4].value
+          - fromFieldPath: spec.id
+            toFieldPath: spec.providerConfigRef.name
+          readinessChecks:
+          - type: None
+        - base:
+            apiVersion: kubernetes.crossplane.io/v1alpha1
+            kind: Object
+            spec:
+              forProvider:
+                manifest:
+                  apiVersion: v1
+                  kind: Service
+                  spec:
                     ports:
-                    - containerPort: 80
-                    readinessProbe:
-                      httpGet:
-                        path: /
-                        port: 80
-                    resources:
-                      limits:
-                        cpu: 250m
-                        memory: 256Mi
-                      requests:
-                        cpu: 125m
-                        memory: 128Mi
-    name: deployment
-    patches:
-    - fromFieldPath: spec.id
-      toFieldPath: metadata.name
-      transforms:
-      - string:
-          fmt: '%s-deployment'
-        type: string
-    - fromFieldPath: spec.id
-      toFieldPath: spec.forProvider.manifest.metadata.name
-    - fromFieldPath: spec.parameters.namespace
-      toFieldPath: spec.forProvider.manifest.metadata.namespace
-    - fromFieldPath: spec.id
-      toFieldPath: spec.forProvider.manifest.metadata.labels.app
-    - fromFieldPath: spec.id
-      toFieldPath: spec.forProvider.manifest.spec.selector.matchLabels.app
-    - fromFieldPath: spec.id
-      toFieldPath: spec.forProvider.manifest.spec.template.metadata.labels.app
-    - fromFieldPath: spec.parameters.image
-      toFieldPath: spec.forProvider.manifest.spec.template.spec.containers[0].image
-    - fromFieldPath: spec.parameters.port
-      toFieldPath: spec.forProvider.manifest.spec.template.spec.containers[0].ports[0].containerPort
-    - fromFieldPath: spec.parameters.port
-      toFieldPath: spec.forProvider.manifest.spec.template.spec.containers[0].livenessProbe.httpGet.port
-    - fromFieldPath: spec.parameters.port
-      toFieldPath: spec.forProvider.manifest.spec.template.spec.containers[0].readinessProbe.httpGet.port
-    - fromFieldPath: spec.id
-      toFieldPath: spec.forProvider.manifest.spec.template.spec.containers[0].env[0].valueFrom.secretKeyRef.name
-    - fromFieldPath: spec.id
-      toFieldPath: spec.forProvider.manifest.spec.template.spec.containers[0].env[1].valueFrom.secretKeyRef.name
-    - fromFieldPath: spec.id
-      toFieldPath: spec.forProvider.manifest.spec.template.spec.containers[0].env[2].valueFrom.secretKeyRef.name
-    - fromFieldPath: spec.id
-      toFieldPath: spec.forProvider.manifest.spec.template.spec.containers[0].env[3].valueFrom.secretKeyRef.name
-    - fromFieldPath: spec.id
-      toFieldPath: spec.forProvider.manifest.spec.template.spec.containers[0].env[4].value
-    - fromFieldPath: spec.id
-      toFieldPath: spec.providerConfigRef.name
-    readinessChecks:
-    - type: None
-  - base:
-      apiVersion: kubernetes.crossplane.io/v1alpha1
-      kind: Object
-      spec:
-        forProvider:
-          manifest:
-            apiVersion: v1
-            kind: Service
+                    - name: http
+                      port: 80
+                      protocol: TCP
+                      targetPort: 80
+                    type: ClusterIP
+          name: service
+          patches:
+          - fromFieldPath: spec.id
+            toFieldPath: metadata.name
+            transforms:
+            - string:
+                fmt: '%s-service'
+              type: string
+          - fromFieldPath: spec.id
+            toFieldPath: spec.forProvider.manifest.metadata.name
+          - fromFieldPath: spec.parameters.namespace
+            toFieldPath: spec.forProvider.manifest.metadata.namespace
+          - fromFieldPath: spec.id
+            toFieldPath: spec.forProvider.manifest.metadata.labels.app
+          - fromFieldPath: spec.id
+            toFieldPath: spec.forProvider.manifest.spec.selector.app
+          - fromFieldPath: spec.parameters.port
+            toFieldPath: spec.forProvider.manifest.spec.ports[0].port
+          - fromFieldPath: spec.parameters.port
+            toFieldPath: spec.forProvider.manifest.spec.ports[0].targetPort
+          - fromFieldPath: spec.id
+            toFieldPath: spec.providerConfigRef.name
+          readinessChecks:
+          - type: None
+        - base:
+            apiVersion: kubernetes.crossplane.io/v1alpha1
+            kind: Object
             spec:
-              ports:
-              - name: http
-                port: 80
-                protocol: TCP
-                targetPort: 80
-              type: ClusterIP
-    name: service
-    patches:
-    - fromFieldPath: spec.id
-      toFieldPath: metadata.name
-      transforms:
-      - string:
-          fmt: '%s-service'
-        type: string
-    - fromFieldPath: spec.id
-      toFieldPath: spec.forProvider.manifest.metadata.name
-    - fromFieldPath: spec.parameters.namespace
-      toFieldPath: spec.forProvider.manifest.metadata.namespace
-    - fromFieldPath: spec.id
-      toFieldPath: spec.forProvider.manifest.metadata.labels.app
-    - fromFieldPath: spec.id
-      toFieldPath: spec.forProvider.manifest.spec.selector.app
-    - fromFieldPath: spec.parameters.port
-      toFieldPath: spec.forProvider.manifest.spec.ports[0].port
-    - fromFieldPath: spec.parameters.port
-      toFieldPath: spec.forProvider.manifest.spec.ports[0].targetPort
-    - fromFieldPath: spec.id
-      toFieldPath: spec.providerConfigRef.name
-    readinessChecks:
-    - type: None
-  - base:
-      apiVersion: kubernetes.crossplane.io/v1alpha1
-      kind: Object
-      spec:
-        forProvider:
-          manifest:
-            apiVersion: networking.k8s.io/v1
-            kind: Ingress
-            metadata:
-              annotations:
-                ingress.kubernetes.io/ssl-redirect: "false"
+              forProvider:
+                manifest:
+                  apiVersion: networking.k8s.io/v1
+                  kind: Ingress
+                  metadata:
+                    annotations:
+                      ingress.kubernetes.io/ssl-redirect: "false"
+                  spec:
+                    rules:
+                    - host: devopstoolkitseries.com
+                      http:
+                        paths:
+                        - backend:
+                            service:
+                              name: devops-toolkit
+                              port:
+                                number: 80
+                          path: /
+                          pathType: ImplementationSpecific
+          name: ingress
+          patches:
+          - fromFieldPath: spec.id
+            toFieldPath: metadata.name
+            transforms:
+            - string:
+                fmt: '%s-ingress'
+              type: string
+          - fromFieldPath: spec.id
+            toFieldPath: spec.forProvider.manifest.metadata.name
+          - fromFieldPath: spec.parameters.namespace
+            toFieldPath: spec.forProvider.manifest.metadata.namespace
+          - fromFieldPath: spec.id
+            toFieldPath: spec.forProvider.manifest.metadata.labels.app
+          - fromFieldPath: spec.parameters.host
+            toFieldPath: spec.forProvider.manifest.spec.rules[0].host
+          - fromFieldPath: spec.id
+            toFieldPath: spec.forProvider.manifest.spec.rules[0].http.paths[0].backend.service.name
+          - fromFieldPath: spec.parameters.port
+            toFieldPath: spec.forProvider.manifest.spec.rules[0].http.paths[0].backend.service.port.number
+          - fromFieldPath: spec.id
+            toFieldPath: spec.providerConfigRef.name
+          - fromFieldPath: spec.forProvider.manifest.spec.rules[0].host
+            toFieldPath: status.host
+            type: ToCompositeFieldPath
+          readinessChecks:
+          - type: None
+        - base:
+            apiVersion: kubernetes.crossplane.io/v1alpha1
+            kind: Object
             spec:
-              rules:
-              - host: devopstoolkitseries.com
-                http:
-                  paths:
-                  - backend:
-                      service:
-                        name: devops-toolkit
-                        port:
-                          number: 80
-                    path: /
-                    pathType: ImplementationSpecific
-    name: ingress
-    patches:
-    - fromFieldPath: spec.id
-      toFieldPath: metadata.name
-      transforms:
-      - string:
-          fmt: '%s-ingress'
-        type: string
-    - fromFieldPath: spec.id
-      toFieldPath: spec.forProvider.manifest.metadata.name
-    - fromFieldPath: spec.parameters.namespace
-      toFieldPath: spec.forProvider.manifest.metadata.namespace
-    - fromFieldPath: spec.id
-      toFieldPath: spec.forProvider.manifest.metadata.labels.app
-    - fromFieldPath: spec.parameters.host
-      toFieldPath: spec.forProvider.manifest.spec.rules[0].host
-    - fromFieldPath: spec.id
-      toFieldPath: spec.forProvider.manifest.spec.rules[0].http.paths[0].backend.service.name
-    - fromFieldPath: spec.parameters.port
-      toFieldPath: spec.forProvider.manifest.spec.rules[0].http.paths[0].backend.service.port.number
-    - fromFieldPath: spec.id
-      toFieldPath: spec.providerConfigRef.name
-    - fromFieldPath: spec.forProvider.manifest.spec.rules[0].host
-      toFieldPath: status.host
-      type: ToCompositeFieldPath
-    readinessChecks:
-    - type: None
-  - base:
-      apiVersion: kubernetes.crossplane.io/v1alpha1
-      kind: Object
-      spec:
-        forProvider:
-          manifest:
-            apiVersion: devopstoolkitseries.com/v1alpha1
-            kind: SQLClaim
+              forProvider:
+                manifest:
+                  apiVersion: devopstoolkitseries.com/v1alpha1
+                  kind: SQLClaim
+                  spec:
+                    compositionSelector:
+                      matchLabels:
+                        db: postgresql
+                        provider: aws-official
+          name: sql
+          patches:
+          - fromFieldPath: spec.id
+            toFieldPath: metadata.name
+            transforms:
+            - string:
+                fmt: '%s-sql'
+              type: string
+          - fromFieldPath: spec.id
+            toFieldPath: spec.forProvider.manifest.metadata.labels.app
+          - fromFieldPath: spec.id
+            toFieldPath: spec.forProvider.manifest.spec.id
+          - fromFieldPath: spec.parameters.dbVersion
+            toFieldPath: spec.forProvider.manifest.spec.parameters.version
+          - fromFieldPath: spec.parameters.db.version
+            toFieldPath: spec.forProvider.manifest.spec.parameters.version
+          - fromFieldPath: spec.parameters.db.type
+            toFieldPath: spec.forProvider.manifest.spec.parameters.version
+          - fromFieldPath: spec.id
+            toFieldPath: spec.providerConfigRef.name
+          - fromFieldPath: spec.parameters.namespace
+            toFieldPath: spec.forProvider.manifest.metadata.namespace
+        - base:
+            apiVersion: kubernetes.crossplane.io/v1alpha1
+            kind: Object
             spec:
-              compositionSelector:
-                matchLabels:
-                  db: postgresql
-                  provider: aws-official
-    name: sql
-    patches:
-    - fromFieldPath: spec.id
-      toFieldPath: metadata.name
-      transforms:
-      - string:
-          fmt: '%s-sql'
-        type: string
-    - fromFieldPath: spec.id
-      toFieldPath: spec.forProvider.manifest.metadata.labels.app
-    - fromFieldPath: spec.id
-      toFieldPath: spec.forProvider.manifest.spec.id
-    - fromFieldPath: spec.parameters.dbVersion
-      toFieldPath: spec.forProvider.manifest.spec.parameters.version
-    - fromFieldPath: spec.parameters.db.version
-      toFieldPath: spec.forProvider.manifest.spec.parameters.version
-    - fromFieldPath: spec.parameters.db.type
-      toFieldPath: spec.forProvider.manifest.spec.parameters.version
-    - fromFieldPath: spec.id
-      toFieldPath: spec.providerConfigRef.name
-    - fromFieldPath: spec.parameters.namespace
-      toFieldPath: spec.forProvider.manifest.metadata.namespace
-  - base:
-      apiVersion: kubernetes.crossplane.io/v1alpha1
-      kind: Object
-      spec:
-        forProvider:
-          manifest:
-            apiVersion: external-secrets.io/v1beta1
-            kind: ExternalSecret
-            spec:
-              dataFrom:
-              - extract:
-                  key: production-postgresql
-              refreshInterval: 5m
-              secretStoreRef:
-                kind: ClusterSecretStore
-                name: aws
-              target:
-                creationPolicy: Owner
-    name: sql-secret
-    patches:
-    - fromFieldPath: spec.id
-      toFieldPath: metadata.name
-      transforms:
-      - string:
-          fmt: '%s-password'
-        type: string
-    - fromFieldPath: spec.id
-      toFieldPath: spec.forProvider.manifest.spec.target.name
-      transforms:
-      - string:
-          fmt: '%s-password'
-        type: string
-    - fromFieldPath: spec.id
-      toFieldPath: spec.forProvider.manifest.metadata.name
-    - fromFieldPath: spec.parameters.namespace
-      toFieldPath: spec.forProvider.manifest.metadata.namespace
-    - fromFieldPath: spec.id
-      toFieldPath: spec.forProvider.manifest.metadata.labels.app
-    - fromFieldPath: spec.id
-      toFieldPath: spec.providerConfigRef.name
+              forProvider:
+                manifest:
+                  apiVersion: external-secrets.io/v1beta1
+                  kind: ExternalSecret
+                  spec:
+                    dataFrom:
+                    - extract:
+                        key: production-postgresql
+                    refreshInterval: 5m
+                    secretStoreRef:
+                      kind: ClusterSecretStore
+                      name: aws
+                    target:
+                      creationPolicy: Owner
+          name: sql-secret
+          patches:
+          - fromFieldPath: spec.id
+            toFieldPath: metadata.name
+            transforms:
+            - string:
+                fmt: '%s-password'
+              type: string
+          - fromFieldPath: spec.id
+            toFieldPath: spec.forProvider.manifest.spec.target.name
+            transforms:
+            - string:
+                fmt: '%s-password'
+              type: string
+          - fromFieldPath: spec.id
+            toFieldPath: spec.forProvider.manifest.metadata.name
+          - fromFieldPath: spec.parameters.namespace
+            toFieldPath: spec.forProvider.manifest.metadata.namespace
+          - fromFieldPath: spec.id
+            toFieldPath: spec.forProvider.manifest.metadata.labels.app
+          - fromFieldPath: spec.id
+            toFieldPath: spec.providerConfigRef.name
 ---
